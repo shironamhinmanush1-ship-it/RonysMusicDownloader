@@ -7,6 +7,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -44,52 +45,70 @@ public class MainActivity extends Activity {
         else web.restoreState(state);
     }
 
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private Button actionButton(String label, int color) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setAllCaps(false);
+        button.setTextSize(14);
+        button.setTextColor(Color.WHITE);
+        button.setMinHeight(dp(54));
+        button.setBackgroundTintList(ColorStateList.valueOf(color));
+        button.setPadding(dp(6), dp(6), dp(6), dp(6));
+        return button;
+    }
+
     private void buildUi() {
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(10, 10, 10, 6);
+        page.setPadding(dp(8), dp(8), dp(8), dp(4));
         page.setBackgroundColor(Color.rgb(14, 19, 29));
 
         TextView title = new TextView(this);
         title.setText("🎵 Rony's Music Downloader");
         title.setTextColor(Color.WHITE);
-        title.setTextSize(20);
-        title.setPadding(8, 8, 8, 12);
+        title.setTextSize(19);
+        title.setPadding(dp(8), dp(8), dp(8), dp(10));
         page.addView(title);
 
         LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
         address = new EditText(this);
         address.setSingleLine(true);
         address.setText("https://suno.com");
-        address.setHint("Paste a direct HTTPS MP3/WAV URL");
+        address.setHint("Paste MP3/WAV URL or website");
         address.setTextColor(Color.WHITE);
         address.setHintTextColor(Color.LTGRAY);
-        row.addView(address, new LinearLayout.LayoutParams(0, 52, 1));
+        row.addView(address, new LinearLayout.LayoutParams(0, dp(52), 1));
 
-        Button paste = new Button(this);
-        paste.setText("Paste");
-        row.addView(paste);
-        Button go = new Button(this);
-        go.setText("Go");
-        row.addView(go);
+        Button paste = actionButton("PASTE", Color.rgb(65, 76, 96));
+        row.addView(paste, new LinearLayout.LayoutParams(dp(88), dp(52)));
+        Button go = actionButton("GO", Color.rgb(65, 76, 96));
+        row.addView(go, new LinearLayout.LayoutParams(dp(72), dp(52)));
         page.addView(row);
 
         LinearLayout actions = new LinearLayout(this);
-        Button home = new Button(this);
-        home.setText("Suno");
-        Button download = new Button(this);
-        download.setText("Download URL");
-        Button detected = new Button(this);
-        detected.setText("Use detected");
-        actions.addView(home, new LinearLayout.LayoutParams(0, 52, 1));
-        actions.addView(download, new LinearLayout.LayoutParams(0, 52, 1));
-        actions.addView(detected, new LinearLayout.LayoutParams(0, 52, 1));
-        page.addView(actions);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setMinimumHeight(dp(60));
+        Button detected = actionButton("USE DETECTED", Color.rgb(0, 126, 116));
+        Button download = actionButton("DOWNLOAD AUDIO", Color.rgb(26, 120, 190));
+        Button home = actionButton("SUNO HOME", Color.rgb(65, 76, 96));
+        LinearLayout.LayoutParams actionParams =
+                new LinearLayout.LayoutParams(0, dp(58), 1);
+        actionParams.setMargins(dp(2), dp(3), dp(2), dp(3));
+        actions.addView(detected, new LinearLayout.LayoutParams(actionParams));
+        actions.addView(download, new LinearLayout.LayoutParams(actionParams));
+        actions.addView(home, new LinearLayout.LayoutParams(actionParams));
+        page.addView(actions, new LinearLayout.LayoutParams(-1, dp(64)));
 
         status = new TextView(this);
-        status.setTextColor(Color.rgb(90, 210, 190));
-        status.setPadding(8, 8, 8, 8);
-        status.setText("Paste a direct HTTPS MP3/WAV file URL to download.");
+        status.setTextColor(Color.rgb(90, 220, 195));
+        status.setTextSize(13);
+        status.setPadding(dp(8), dp(5), dp(8), dp(5));
+        status.setText("Open a song in Suno. If its direct audio file is detected, tap USE DETECTED, then DOWNLOAD AUDIO.");
         page.addView(status);
 
         web = new WebView(this);
@@ -105,10 +124,10 @@ public class MainActivity extends Activity {
         download.setOnClickListener(v -> startDownload(address.getText().toString().trim()));
         detected.setOnClickListener(v -> {
             if (detectedAudioUrl.isEmpty()) {
-                status.setText("No direct MP3/WAV URL detected. Paste a direct audio URL.");
+                status.setText("No direct audio file detected yet. Open/play the song or paste its direct MP3/WAV URL.");
             } else {
                 address.setText(detectedAudioUrl);
-                status.setText("Detected link filled in. Review it, then tap Download URL.");
+                status.setText("Audio link selected. Now tap DOWNLOAD AUDIO.");
             }
         });
     }
@@ -139,7 +158,7 @@ public class MainActivity extends Activity {
                 if (isDirectAudioUrl(url)) {
                     detectedAudioUrl = url;
                     runOnUiThread(() -> status.setText(
-                            "Direct MP3/WAV link detected. Tap Use detected, then Download URL."));
+                            "Direct MP3/WAV file detected. Tap USE DETECTED, then DOWNLOAD AUDIO."));
                 }
                 return super.shouldInterceptRequest(view, request);
             }
@@ -148,9 +167,9 @@ public class MainActivity extends Activity {
             if (isDirectAudioUrl(url)) {
                 detectedAudioUrl = url;
                 address.setText(url);
-                status.setText("Direct audio URL received. Review it and tap Download URL.");
+                status.setText("Direct audio file received. Tap DOWNLOAD AUDIO.");
             } else {
-                status.setText("Unsupported link. A direct HTTPS .mp3 or .wav URL is required.");
+                status.setText("This is not a direct MP3/WAV file link. Paste a direct audio URL instead.");
             }
         });
     }
@@ -164,7 +183,7 @@ public class MainActivity extends Activity {
                 CharSequence value = clip.getItemAt(0).coerceToText(this);
                 if (value != null) {
                     address.setText(value.toString().trim());
-                    status.setText("Link pasted. Tap Download URL.");
+                    status.setText("Link pasted. Tap DOWNLOAD AUDIO.");
                     return;
                 }
             }
@@ -205,7 +224,7 @@ public class MainActivity extends Activity {
 
     private void startDownload(String value) {
         if (!isDirectAudioUrl(value)) {
-            status.setText("Enter a direct HTTPS URL ending in .mp3 or .wav. Webpages and streams are not supported.");
+            status.setText("No direct audio URL in the box. Use USE DETECTED after a file is detected, or paste a direct HTTPS .mp3/.wav URL.");
             return;
         }
         if (Build.VERSION.SDK_INT <= 28 &&
@@ -214,7 +233,7 @@ public class MainActivity extends Activity {
             pendingDownloadUrl = value;
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     STORAGE_PERMISSION_REQUEST);
-            status.setText("Storage permission is needed on Android 9 and older.");
+            status.setText("Allow storage permission to continue.");
             return;
         }
         enqueueDownload(value);
@@ -237,8 +256,7 @@ public class MainActivity extends Activity {
             request.setDestinationInExternalPublicDir(
                     Environment.DIRECTORY_MUSIC, "RonysMusicDownloader/" + name);
             long id = downloads.enqueue(request);
-            status.setText("Download started. ID: " + id +
-                    "\\nSaved in Music/RonysMusicDownloader/");
+            status.setText("Download started. Check notifications. Saved in Music/RonysMusicDownloader/ (ID " + id + ").");
         } catch (Exception e) {
             status.setText("Download could not start: " + e.getMessage());
         }
